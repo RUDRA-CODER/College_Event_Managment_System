@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { EventCard } from '@/components/events/EventCard';
-import { mockEvents } from '@/data/events';
+import { fetchEvents } from '@/services/api';
 import { Search, Filter, Calendar } from 'lucide-react';
 
 function EventsContent() {
@@ -13,19 +13,46 @@ function EventsContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchEvents()
+      .then((data) => {
+        // Map _id to id if necessary
+        const mappedData = data.map((e: any) => ({ ...e, id: e._id || e.id }));
+        setEvents(mappedData);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load events:', err);
+        setError('Failed to load events.');
+        setLoading(false);
+      });
+  }, []);
 
   const categories = ['All', 'Inspire', 'Cultural', 'Dance', 'Sports', 'Technical', 'Workshop', 'Seminar', 'Other'];
   const statuses = ['All', 'Upcoming', 'Ongoing', 'Completed'];
 
   // Filter events based on state
-  const filteredEvents = mockEvents.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          event.shortDescription.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || event.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'All' || event.status === selectedStatus;
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === 'All' || (event.category && event.category.toLowerCase() === selectedCategory.toLowerCase());
+    const matchesStatus = selectedStatus === 'All' || (event.status && event.status.toLowerCase() === selectedStatus.toLowerCase());
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500">Loading events...</div>;
+  }
+  
+  if (error) {
+    return <div className="py-12 text-center text-red-500">{error}</div>;
+  }
 
   return (
     <>

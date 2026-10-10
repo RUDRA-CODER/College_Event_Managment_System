@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockEvents } from '@/data/events';
+import { getToken } from '@/services/auth';
+import { fetchMyRegistrations, fetchEvents } from '@/services/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Calendar, MapPin, Search, ArrowRight, Ticket } from 'lucide-react';
@@ -11,25 +12,47 @@ import Link from 'next/link';
 export default function MyRegistrationsPage() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
-  const [registeredIds, setRegisteredIds] = useState<string[]>([]);
   const [filter, setFilter] = useState('All');
+  
+  const [myEvents, setMyEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const isLoggedIn = !!getToken();
     if (!isLoggedIn) {
       router.push('/login');
+      return;
     }
 
-    const savedRegs = localStorage.getItem('mockRegistrations');
-    if (savedRegs) {
-      setRegisteredIds(JSON.parse(savedRegs));
-    }
+    const loadData = async () => {
+      try {
+        const [regs, allEvents] = await Promise.all([
+          fetchMyRegistrations(),
+          fetchEvents()
+        ]);
+        
+        // Map regs to include event details
+        const combined = regs.map((r: any) => {
+          const ev = allEvents.find((e: any) => (e._id || e.id) === r.eventId);
+          return {
+            ...r,
+            event: ev
+          };
+        }).filter((r: any) => r.event);
+          
+        setMyEvents(combined);
+      } catch (err) {
+        console.error('Failed to load registrations:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, [router]);
 
   if (!isClient) return null;
-
-  const myEvents = mockEvents.filter(e => registeredIds.includes(e.id));
   
   const filteredEvents = myEvents.filter(e => {
     if (filter === 'All') return true;
@@ -81,14 +104,16 @@ export default function MyRegistrationsPage() {
         <div className="animate-fade-up" style={{ animationDelay: '0.2s' }}>
           {filteredEvents.length > 0 ? (
             <div className="space-y-6">
-              {filteredEvents.map(event => (
-                <div key={event.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden flex flex-col md:flex-row transition-all hover:shadow-md hover:border-primary-200">
+              {filteredEvents.map(reg => {
+                const event = reg.event;
+                return (
+                <div key={reg.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden flex flex-col md:flex-row transition-all hover:shadow-md hover:border-primary-200">
                   {/* Image */}
                   <div className="w-full md:w-64 h-56 md:h-auto shrink-0 relative overflow-hidden">
-                    <img src={event.image} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={event.image || '/ckpcet.webp'} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute top-4 left-4">
-                      <Badge variant={event.status === 'Completed' ? 'secondary' : 'success'} className="shadow-sm backdrop-blur-md bg-white/90">
-                        {event.status === 'Completed' ? 'Completed' : 'Confirmed'}
+                      <Badge variant={event.status === 'completed' ? 'secondary' : 'success'} className="shadow-sm backdrop-blur-md bg-white/90">
+                        {event.status === 'completed' ? 'Completed' : 'Confirmed'}
                       </Badge>
                     </div>
                   </div>
@@ -100,17 +125,17 @@ export default function MyRegistrationsPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-xs font-bold bg-primary-50 text-primary-600 px-3 py-1 rounded-full uppercase tracking-wider">{event.category}</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-navy-900 group-hover:text-primary-600 transition-colors">{event.name}</h3>
+                        <h3 className="text-2xl font-bold text-navy-900 group-hover:text-primary-600 transition-colors">{event.title}</h3>
                       </div>
                       <div className="text-left sm:text-right shrink-0">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-gray-100 text-sm font-mono text-gray-500">
                           <Ticket className="h-4 w-4 text-gray-400" />
-                          REG-{event.id.slice(-4).toUpperCase()}
+                          REG-{(reg.id || reg._id || '0000').slice(-4).toUpperCase()}
                         </div>
                       </div>
                     </div>
                     
-                    <p className="text-gray-600 text-sm mb-6 line-clamp-2">{event.shortDescription}</p>
+                    <p className="text-gray-600 text-sm mb-6 line-clamp-2">{event.description}</p>
                     
                     <div className="mt-auto pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                       <div className="flex flex-wrap gap-6 text-sm text-gray-600 font-medium">
@@ -118,19 +143,19 @@ export default function MyRegistrationsPage() {
                         <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-gray-400" /> {event.venue}</div>
                       </div>
                       <div className="flex gap-3 w-full sm:w-auto">
-                        {event.status === 'Completed' ? (
-                          <Button variant="outline" className="w-full sm:w-auto flex-1">View Certificate</Button>
-                        ) : (
-                          <Button variant="outline" className="w-full sm:w-auto flex-1 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200">View Ticket</Button>
-                        )}
-                        <Link href={`/events/${event.id}`} className="flex-1 sm:flex-none">
+                        <Link href={`/ticket/${reg.id || reg._id}`} className="w-full sm:w-auto flex-1">
+                          <Button variant="outline" className="w-full sm:w-auto flex-1 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200">
+                            {event.status === 'completed' ? 'View Certificate' : 'View Ticket'}
+                          </Button>
+                        </Link>
+                        <Link href={`/events/${event.id || event._id}`} className="flex-1 sm:flex-none">
                           <Button variant="primary" className="w-full">Event Page</Button>
                         </Link>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-16 text-center border border-gray-100/50 shadow-sm">

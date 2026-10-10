@@ -5,8 +5,12 @@ import Link from 'next/link';
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { getToken } from '@/services/auth';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function CoordinatorEvents() {
+  const { showError } = useToast();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,8 +18,8 @@ export default function CoordinatorEvents() {
 
   const fetchEvents = async () => {
     try {
-      const token = localStorage.getItem('coordinator_token');
-      const res = await fetch('http://localhost:5000/api/coordinator/events', {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/coordinator/events`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -35,7 +39,7 @@ export default function CoordinatorEvents() {
 
   const handleDelete = async (id: string) => {
     // Coordinators cannot delete events
-    alert('You do not have permission to delete events.');
+    showError('You do not have permission to delete events.');
   };
 
   const getStatusBadge = (status: string) => {
@@ -135,16 +139,28 @@ export default function CoordinatorEvents() {
                       {getStatusBadge(event.status)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         <Link href={`/coordinator/events/${event.id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="View Details">
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            className="h-10 w-10 p-0 rounded-xl text-gray-600 hover:text-primary-600 hover:bg-primary-50 inline-flex items-center justify-center transition-colors" 
+                            title="View Details"
+                            aria-label="View Details"
+                          >
+                            <Eye className="h-5 w-5" />
                           </Button>
                         </Link>
                         {/* Edit is allowed for assigned events */}
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Edit Event">
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/coordinator/events/${event.id}/edit`}>
+                          <Button 
+                            variant="ghost" 
+                            className="h-10 w-10 p-0 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-blue-50 inline-flex items-center justify-center transition-colors" 
+                            title="Edit Event"
+                            aria-label="Edit Event"
+                          >
+                            <Edit className="h-5 w-5" />
+                          </Button>
+                        </Link>
                       </div>
                     </td>
                   </tr>

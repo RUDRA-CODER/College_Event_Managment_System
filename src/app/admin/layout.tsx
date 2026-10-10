@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Calendar, PlusCircle, Users, User, LogOut, Menu, X, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { API_BASE } from '@/services/api';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -18,12 +19,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.push('/admin/login');
     }
     if (isAuth) {
-      try {
-        const data = JSON.parse(localStorage.getItem('admin_data') || '{}');
-        setAdmin(data);
-      } catch (e) {
-        // ignore
-      }
+      const fetchAdmin = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/profile`, {
+            headers: { 'Authorization': `Bearer ${isAuth}` }
+          });
+          const data = await res.json();
+          if (data.success) {
+            setAdmin(data.data);
+            localStorage.setItem('admin_data', JSON.stringify(data.data)); // Keep for cache
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      fetchAdmin();
     }
   }, [pathname, router]);
 
@@ -93,7 +103,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Sidebar Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isExactMatch = pathname === item.href;
+            const isPrefixMatch = pathname.startsWith(item.href + '/');
+            const isMoreSpecificMatch = navItems.some(
+              otherItem => otherItem.href !== item.href && otherItem.href.length > item.href.length && (pathname === otherItem.href || pathname.startsWith(otherItem.href + '/'))
+            );
+            const isActive = isExactMatch || (isPrefixMatch && !isMoreSpecificMatch);
             const Icon = item.icon;
             return (
               <Link
@@ -127,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen max-w-full overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-screen min-w-0 max-w-full overflow-hidden">
         {/* Mobile Header */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center px-4 md:hidden sticky top-0 z-30">
           <button 

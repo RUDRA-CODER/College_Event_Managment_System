@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { API_BASE } from '@/services/api';
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -16,7 +17,7 @@ export default function EventDetails() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/events/${id}`);
+        const res = await fetch(`${API_BASE}/events/${id}`);
         const data = await res.json();
         if (data.success) {
           setEvent(data.data);
@@ -32,21 +33,7 @@ export default function EventDetails() {
     if (id) fetchEvent();
   }, [id, router]);
 
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      try {
-        const res = await fetch(`http://localhost:5000/api/events/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-          router.push('/coordinator/events');
-        } else {
-          alert('Failed to delete event');
-        }
-      } catch (err) {
-        alert('An error occurred');
-      }
-    }
-  };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -76,14 +63,11 @@ export default function EventDetails() {
           <h1 className="text-2xl font-bold text-navy-900">Event Details</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href={`/coordinator/events`}>
-            <Button variant="outline" className="gap-2 rounded-xl border-gray-200">
-              <Edit className="h-4 w-4" /> Edit Event
+          <Link href={`/coordinator/events/${id}/edit`}>
+            <Button variant="outline" className="gap-2 rounded-xl border-gray-200 h-11 px-5">
+              <Edit className="h-5 w-5" /> Edit Event
             </Button>
           </Link>
-          <Button variant="outline" onClick={handleDelete} className="gap-2 rounded-xl border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-100">
-            <Trash2 className="h-4 w-4" /> Delete
-          </Button>
         </div>
       </div>
 

@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [coordinators, setCoordinators] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -19,14 +22,17 @@ export default function CreateEventPage() {
     category: 'Technical',
     maxParticipants: 100,
     coordinatorIds: [] as string[],
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+    image: '',
+    registrationDeadline: '',
+    status: 'upcoming',
+    customFields: [] as { name: string; type: string; required: boolean; options: string[] }[]
   });
 
   useEffect(() => {
     const fetchCoordinators = async () => {
       try {
         const token = localStorage.getItem('admin_token');
-        const res = await fetch('http://localhost:5000/api/admin/coordinators', {
+        const res = await fetch(`${API_BASE}/admin/coordinators`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -45,6 +51,28 @@ export default function CreateEventPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleCustomFieldChange = (index: number, field: string, value: any) => {
+    setFormData(prev => {
+      const newFields = [...prev.customFields];
+      newFields[index] = { ...newFields[index], [field]: value };
+      return { ...prev, customFields: newFields };
+    });
+  };
+
+  const addCustomField = () => {
+    setFormData(prev => ({
+      ...prev,
+      customFields: [...prev.customFields, { name: '', type: 'text', required: false, options: [] }]
+    }));
+  };
+
+  const removeCustomField = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      customFields: prev.customFields.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleCoordinatorToggle = (id: string) => {
     setFormData(prev => {
       const current = prev.coordinatorIds;
@@ -58,10 +86,11 @@ export default function CreateEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${API_BASE}/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,12 +104,13 @@ export default function CreateEventPage() {
 
       const data = await res.json();
       if (data.success) {
+        showSuccess('Event saved successfully.');
         router.push('/admin/events');
       } else {
-        alert(data.message || 'Failed to create event');
+        showError(data.message || 'Failed to create event');
       }
-    } catch (err) {
-      alert('Error creating event');
+    } catch (err: any) {
+      showError(err.message || 'Error creating event');
     } finally {
       setLoading(false);
     }
@@ -116,7 +146,7 @@ export default function CreateEventPage() {
                   value={formData.title}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="e.g., Annual Tech Symposium 2024"
+                  placeholder="Enter event title"
                 />
               </div>
 
@@ -158,7 +188,7 @@ export default function CreateEventPage() {
                   value={formData.image}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="https://..."
+                  placeholder="Enter image URL"
                 />
               </div>
             </div>
@@ -175,6 +205,18 @@ export default function CreateEventPage() {
                   name="date"
                   required
                   value={formData.date}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Registration Deadline *</label>
+                <input
+                  type="date"
+                  name="registrationDeadline"
+                  required
+                  value={formData.registrationDeadline}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
@@ -201,7 +243,7 @@ export default function CreateEventPage() {
                   value={formData.venue}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="e.g., Main Auditorium, Block A"
+                  placeholder="Enter venue"
                 />
               </div>
             </div>
@@ -257,18 +299,81 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
-            <div className="flex gap-3">
-              <Link href="/admin/events">
-                <Button type="button" variant="outline" className="rounded-xl">
-                  Cancel
-                </Button>
-              </Link>
-              <Button type="submit" variant="primary" className="gap-2 rounded-xl" disabled={loading}>
-                <Save className="h-4 w-4" />
-                {loading ? 'Creating...' : 'Create Event'}
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+              <h2 className="text-lg font-semibold text-navy-900">Custom Fields</h2>
+              <Button type="button" variant="outline" size="sm" onClick={addCustomField}>
+                Add Field
               </Button>
             </div>
+            
+            {formData.customFields.map((field, index) => (
+              <div key={index} className="flex gap-4 items-end bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Field Name</label>
+                  <input
+                    type="text"
+                    value={field.name}
+                    onChange={(e) => handleCustomFieldChange(index, 'name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    required
+                  />
+                </div>
+                <div className="w-32">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={field.type}
+                    onChange={(e) => handleCustomFieldChange(index, 'type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="textarea">Textarea</option>
+                    <option value="boolean">Checkbox</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    checked={field.required}
+                    onChange={(e) => handleCustomFieldChange(index, 'required', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary-600"
+                  />
+                  <span className="text-sm text-gray-700">Required</span>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => removeCustomField(index)} 
+                  className="h-10 w-10 p-0 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 flex items-center justify-center shrink-0 transition-colors"
+                  title="Remove Field"
+                  aria-label="Remove Field"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
+            <Link href="/admin/events" className="w-full sm:w-auto">
+              <Button type="button" variant="outline" className="w-full sm:w-auto rounded-xl h-11 px-6">
+                Cancel
+              </Button>
+            </Link>
+            <Button type="submit" variant="primary" className="w-full sm:w-auto gap-2 rounded-xl h-11 px-6" disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Create Event
+                </>
+              )}
+            </Button>
           </div>
         </form>
       </div>

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { setToken } from '@/services/auth';
+import { API_BASE } from '@/services/api';
 
 export default function CoordinatorLogin() {
   const [email, setEmail] = useState('');
@@ -20,7 +22,7 @@ export default function CoordinatorLogin() {
 
     try {
       // Mock API Call
-      const res = await fetch('http://localhost:5000/api/auth/coordinator/login', {
+      const res = await fetch(`${API_BASE}/auth/coordinator/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -29,8 +31,7 @@ export default function CoordinatorLogin() {
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('coordinator_token', data.data.token);
-        localStorage.setItem('coordinator_data', JSON.stringify(data.data.coordinator));
+        setToken(data.data.token);
         router.push('/coordinator/dashboard');
       } else {
         setError(data.message || 'Login failed');
@@ -66,7 +67,7 @@ export default function CoordinatorLogin() {
             Coordinator Portal
           </h2>
           <p className="mt-2 text-sm text-gray-500">
-            Sign in to manage events and registrations
+            Sign in to manage your assigned events and registrations.
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
@@ -92,7 +93,8 @@ export default function CoordinatorLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all sm:text-sm bg-white/50"
-                  placeholder="jane.smith@ckpcet.ac.in"
+                  placeholder="Enter coordinator email"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -111,7 +113,8 @@ export default function CoordinatorLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all sm:text-sm bg-white/50"
-                  placeholder="••••••••"
+                  placeholder="Enter coordinator password"
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -131,9 +134,9 @@ export default function CoordinatorLogin() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
+              <Link href="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -153,9 +156,7 @@ export default function CoordinatorLogin() {
             </Button>
           </div>
           
-          <div className="text-center mt-4">
-             <p className="text-xs text-gray-500">Hint: use <span className="font-semibold text-gray-700">jane.smith@ckpcet.ac.in</span> and any password.</p>
-          </div>
+
         </form>
       </div>
     </div>

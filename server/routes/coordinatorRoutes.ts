@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { CoordinatorController } from '../controllers/CoordinatorController';
 import { RegistrationController } from '../controllers/RegistrationController';
-import { authMiddleware, requireCoordinatorEventAccess } from '../middleware/authMiddleware';
+import { authMiddleware, requireCoordinatorEventAccess, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 const coordinatorController = new CoordinatorController();
@@ -10,11 +10,13 @@ const registrationController = new RegistrationController();
 // Auth routes
 router.post('/login', coordinatorController.login.bind(coordinatorController));
 
-// All subsequent routes require authentication
+// All subsequent routes require authentication and coordinator role
 router.use(authMiddleware);
+router.use(requireRole('coordinator'));
 
 // Coordinator Profile & Dashboard
 router.get('/profile', coordinatorController.getProfile.bind(coordinatorController));
+router.put('/profile', coordinatorController.updateProfile.bind(coordinatorController));
 router.get('/dashboard', coordinatorController.getDashboardStats.bind(coordinatorController));
 router.get('/events', coordinatorController.getAssignedEvents.bind(coordinatorController));
 router.get('/registrations', coordinatorController.getAssignedRegistrations.bind(coordinatorController));

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { getToken } from '@/services/auth';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,12 +15,12 @@ export function Navbar() {
 
   // Check login status on mount and when pathname changes
   useEffect(() => {
-    const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const loggedIn = !!getToken();
     setIsLoggedIn(loggedIn);
   }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('auth_token');
     setIsLoggedIn(false);
     router.push('/');
   };

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Calendar, PlusCircle, Users, User, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { getToken, removeToken } from '@/services/auth';
+import { API_BASE } from '@/services/api';
 
 export default function CoordinatorLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,25 +14,34 @@ export default function CoordinatorLayout({ children }: { children: React.ReactN
   const pathname = usePathname();
   const router = useRouter();
 
-  // Redirect to login if not authenticated (Mock implementation)
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const isAuth = localStorage.getItem('coordinator_token');
+    const isAuth = getToken();
     if (!isAuth && !pathname.includes('/login')) {
       router.push('/coordinator/login');
+      return;
     }
     if (isAuth) {
-      try {
-        const data = JSON.parse(localStorage.getItem('coordinator_data') || '{}');
-        setCoordinator(data);
-      } catch (e) {
-        // ignore
-      }
+      // Fetch coordinator profile
+      fetch(`${API_BASE}/coordinator/profile`, {
+        headers: { 'Authorization': `Bearer ${isAuth}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setCoordinator(data.data);
+        } else {
+          // invalid token
+          removeToken();
+          router.push('/coordinator/login');
+        }
+      })
+      .catch(() => {});
     }
   }, [pathname, router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('coordinator_token');
-    localStorage.removeItem('coordinator_data');
+    removeToken();
     router.push('/coordinator/login');
   };
 
@@ -79,7 +90,13 @@ export default function CoordinatorLayout({ children }: { children: React.ReactN
         {/* Sidebar User Info */}
         {coordinator && (
           <div className="p-6 border-b border-gray-100 flex items-center gap-4">
-            <img src={coordinator.avatar} alt="Profile" className="h-12 w-12 rounded-full border border-gray-200" />
+            {coordinator.profileImage ? (
+              <img src={coordinator.profileImage} alt="Profile" className="h-12 w-12 rounded-full border border-gray-200 object-cover" />
+            ) : (
+              <div className="h-12 w-12 rounded-full border border-gray-200 bg-slate-100 flex items-center justify-center text-primary-600">
+                <span className="text-lg font-bold">{coordinator.name?.charAt(0) || 'C'}</span>
+              </div>
+            )}
             <div className="overflow-hidden">
               <h3 className="font-semibold text-sm text-navy-900 truncate">{coordinator.name}</h3>
               <p className="text-xs text-gray-500 truncate">{coordinator.role}</p>
@@ -90,7 +107,12 @@ export default function CoordinatorLayout({ children }: { children: React.ReactN
         {/* Sidebar Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isExactMatch = pathname === item.href;
+            const isPrefixMatch = pathname.startsWith(item.href + '/');
+            const isMoreSpecificMatch = navItems.some(
+              otherItem => otherItem.href !== item.href && otherItem.href.length > item.href.length && (pathname === otherItem.href || pathname.startsWith(otherItem.href + '/'))
+            );
+            const isActive = isExactMatch || (isPrefixMatch && !isMoreSpecificMatch);
             const Icon = item.icon;
             return (
               <Link
@@ -124,7 +146,7 @@ export default function CoordinatorLayout({ children }: { children: React.ReactN
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen max-w-full overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-screen min-w-0 max-w-full overflow-hidden">
         {/* Mobile Header */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center px-4 md:hidden sticky top-0 z-30">
           <button 

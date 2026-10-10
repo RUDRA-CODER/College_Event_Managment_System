@@ -3,28 +3,74 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Shield, Save } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function AdminProfile() {
+  const { showSuccess, showError } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    try {
-        const storedData = JSON.parse(localStorage.getItem('admin_data') || '{}');
-        setProfile(storedData);
-    } catch (err) {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return;
+        
+        const res = await fetch(`${API_BASE}/admin/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          setProfile(data.data);
+          // Also update localstorage data as cache if needed, but rely on API
+          localStorage.setItem('admin_data', JSON.stringify(data.data));
+        }
+      } catch (err) {
         console.error('Failed to fetch profile', err);
-    } finally {
+      } finally {
         setLoading(false);
-    }
+      }
+    };
+    fetchProfile();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock save
-    alert('Profile updated successfully (Mock)');
-    setIsEditing(false);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const formData = new FormData(e.target as HTMLFormElement);
+      const name = formData.get('name');
+      
+      const res = await fetch(`${API_BASE}/admin/profile`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ name })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setProfile(data.data);
+        localStorage.setItem('admin_data', JSON.stringify(data.data));
+        showSuccess('Profile updated successfully');
+        setIsEditing(false);
+      } else {
+        showError(data.message || 'Failed to update profile');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showError(err.message || 'An error occurred');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -70,6 +116,7 @@ export default function AdminProfile() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input
                   type="text"
+                  name="name"
                   defaultValue={profile.name}
                   disabled={!isEditing}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
@@ -110,9 +157,32 @@ export default function AdminProfile() {
             </div>
 
             {isEditing && (
-              <div className="flex justify-end pt-4 border-t border-gray-100 mt-8">
-                <Button type="submit" variant="primary" className="gap-2 rounded-xl shadow-md shadow-primary-500/20">
-                  <Save className="h-4 w-4" /> Save Changes
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 mt-8">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditing(false)} 
+                  disabled={saving}
+                  className="w-full sm:w-auto rounded-xl h-11 px-6"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  disabled={saving}
+                  className="w-full sm:w-auto gap-2 rounded-xl h-11 px-6 shadow-md shadow-primary-500/20"
+                >
+                  {saving ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" /> Save Changes
+                    </>
+                  )}
                 </Button>
               </div>
             )}

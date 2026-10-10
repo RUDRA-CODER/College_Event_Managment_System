@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { EventService } from '../services/EventService';
+import { verifyToken } from '../utils/auth';
 
 // Extend Express Request to include user
 declare global {
@@ -13,42 +14,53 @@ declare global {
   }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): any => {
   const authHeader = req.headers.authorization;
   
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const id = token.replace('mock-jwt-token-', '');
-    
-    // For mock auth, we determine role by checking ID prefix
-    const role = id.startsWith('admin') ? 'admin' : 'coordinator';
-    
-    req.user = { id, role };
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Missing or invalid token' });
   }
+
+  const token = authHeader.substring(7);
   
-  next();
+  try {
+    const payload = verifyToken(token);
+    req.user = { id: payload.userId, role: payload.role };
+    return next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Invalid or expired token' });
+  }
 };
 
-export const requireAdminAccess = (req: Request, res: Response, next: NextFunction) => {
+export const requireRole = (role: string) => {
+  return (req: Request, res: Response, next: NextFunction): any => {
+    if (!req.user || req.user.role !== role) {
+      return res.status(403).json({ success: false, message: `Forbidden: ${role} access required` });
+    }
+    return next();
+  };
+};
+
+export const requireAdminAccess = (req: Request, res: Response, next: NextFunction): any => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Forbidden: Admin access required' });
   }
   return next();
 };
 
-export const requireCoordinatorEventAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireCoordinatorEventAccess = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
-  // Admin access (placeholder for future admin role)
+  // Admin access
   if (req.user.role === 'admin') {
     return next();
   }
 
   // Coordinator access
   if (req.user.role === 'coordinator') {
-    let eventId = req.params.id || req.body.eventId || req.query.eventId;
+    let eventId = req.params.id || req.body?.eventId || req.query.eventId;
     
     // Specifically handle the /events/:eventId/registrations case where parameter name might be eventId
     if (!eventId && req.params.eventId) {

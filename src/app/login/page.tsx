@@ -5,23 +5,36 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { setToken } from '@/services/auth';
+import { loginStudent } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock Authentication
-    setTimeout(() => {
-      localStorage.setItem('isLoggedIn', 'true');
+    try {
+      const data = await loginStudent({ email, password });
+
+      if (data.success) {
+        setToken(data.token);
+        showSuccess("Logged in successfully!");
+        router.push('/dashboard');
+      } else {
+        showError(data.message || 'Login failed');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to connect to the server');
+    } finally {
       setIsLoading(false);
-      router.push('/dashboard');
-    }, 1000);
+    }
   };
 
   return (
@@ -35,8 +48,8 @@ export default function LoginPage() {
           </Link>
 
           <div>
-            <h2 className="text-3xl font-extrabold text-navy-900 tracking-tight">Welcome back</h2>
-            <p className="mt-2 text-gray-600">Please enter your details to sign in.</p>
+            <h2 className="text-3xl font-extrabold text-navy-900 tracking-tight">Welcome Back</h2>
+            <p className="mt-2 text-gray-600">Sign in to your CKPCET Events account</p>
           </div>
 
           <div className="mt-8">
@@ -54,7 +67,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-11 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-primary-600 focus:border-primary-600 sm:text-sm transition-all shadow-sm"
-                    placeholder="e.g. 22CE001"
+                    placeholder="Enter your college email"
                   />
                 </div>
               </div>
@@ -71,7 +84,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full pl-11 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-primary-600 focus:border-primary-600 sm:text-sm transition-all shadow-sm"
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                   />
                 </div>
               </div>
@@ -90,9 +103,9 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
+                  <Link href="/forgot-password" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
               </div>
 

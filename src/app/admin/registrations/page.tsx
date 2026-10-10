@@ -4,8 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 export default function AdminRegistrations() {
+  const { showSuccess, showError } = useToast();
+  const { confirm } = useConfirm();
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,8 +23,8 @@ export default function AdminRegistrations() {
       const token = localStorage.getItem('admin_token');
       const headers = { 'Authorization': `Bearer ${token}` };
       const [regsRes, eventsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/registrations', { headers }),
-        fetch('http://localhost:5000/api/events')
+        fetch(`${API_BASE}/admin/registrations`, { headers }),
+        fetch(`${API_BASE}/events`)
       ]);
       const regsData = await regsRes.json();
       const eventsData = await eventsRes.json();
@@ -40,7 +45,7 @@ export default function AdminRegistrations() {
   const handleUpdateStatus = async (id: string, status: string) => {
     try {
       const token = localStorage.getItem('admin_token');
-      const res = await fetch(`http://localhost:5000/api/registrations/${id}`, {
+      const res = await fetch(`${API_BASE}/registrations/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -50,17 +55,20 @@ export default function AdminRegistrations() {
       });
       const data = await res.json();
       if (data.success) {
+        showSuccess('Status updated successfully');
         fetchData();
+      } else {
+        showError(data.message || 'Failed to update status');
       }
-    } catch (err) {
-      alert('Failed to update status');
+    } catch (err: any) {
+      showError(err.message || 'Failed to update status');
     }
   };
 
   const handleUpdateAttendance = async (id: string, attendance: boolean) => {
     try {
       const token = localStorage.getItem('admin_token');
-      const res = await fetch(`http://localhost:5000/api/registrations/${id}`, {
+      const res = await fetch(`${API_BASE}/registrations/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -70,27 +78,40 @@ export default function AdminRegistrations() {
       });
       const data = await res.json();
       if (data.success) {
+        showSuccess('Attendance updated');
         fetchData();
+      } else {
+        showError(data.message || 'Failed to update attendance');
       }
-    } catch (err) {
-      alert('Failed to update attendance');
+    } catch (err: any) {
+      showError(err.message || 'Failed to update attendance');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to cancel and delete this registration?')) {
+    const isConfirmed = await confirm({
+      title: 'Delete Registration',
+      message: 'Are you sure you want to cancel and delete this registration?',
+      confirmText: 'Delete',
+      isDestructive: true
+    });
+
+    if (isConfirmed) {
       try {
         const token = localStorage.getItem('admin_token');
-        const res = await fetch(`http://localhost:5000/api/registrations/${id}`, { 
+        const res = await fetch(`${API_BASE}/registrations/${id}`, { 
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.success) {
+          showSuccess('Registration deleted');
           fetchData();
+        } else {
+          showError(data.message || 'Failed to delete registration');
         }
-      } catch (err) {
-        alert('Failed to delete registration');
+      } catch (err: any) {
+        showError(err.message || 'Failed to delete registration');
       }
     }
   };
@@ -188,7 +209,17 @@ export default function AdminRegistrations() {
                       <div className="text-gray-400 text-xs">{reg.email}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-gray-900 font-medium">{getEventName(reg.eventId)}</div>
+                      <div className="text-gray-900 font-medium mb-2">{getEventName(reg.eventId)}</div>
+                      {reg.customData && Object.keys(reg.customData).length > 0 && (
+                        <div className="grid grid-cols-1 gap-2 bg-gray-50/80 p-3 rounded-lg border border-gray-100 min-w-[200px]">
+                          {Object.entries(reg.customData).map(([k, v]) => (
+                            <div key={k} className="flex flex-col">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{k}</span>
+                              <span className="text-sm font-medium text-gray-700 truncate" title={v as string}>{v as string}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {reg.registrationDate}
@@ -217,16 +248,17 @@ export default function AdminRegistrations() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         {reg.status !== 'confirmed' && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
                             onClick={() => handleUpdateStatus(reg.id, 'confirmed')}
-                            className="h-8 w-8 p-0 rounded-lg text-green-600 hover:bg-green-50"
+                            className="h-10 w-10 p-0 rounded-xl text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
                             title="Confirm Registration"
+                            aria-label="Confirm Registration"
                           >
-                            <CheckCircle className="h-4 w-4" />
+                            <CheckCircle className="h-5 w-5" />
                           </Button>
                         )}
                         {reg.status !== 'cancelled' && (
@@ -234,20 +266,22 @@ export default function AdminRegistrations() {
                             variant="ghost" 
                             size="sm" 
                             onClick={() => handleUpdateStatus(reg.id, 'cancelled')}
-                            className="h-8 w-8 p-0 rounded-lg text-amber-600 hover:bg-amber-50"
+                            className="h-10 w-10 p-0 rounded-xl text-amber-600 hover:bg-amber-50 flex items-center justify-center transition-colors"
                             title="Cancel Registration"
+                            aria-label="Cancel Registration"
                           >
-                            <XCircle className="h-4 w-4" />
+                            <XCircle className="h-5 w-5" />
                           </Button>
                         )}
                         <Button 
                           variant="ghost" 
                           size="sm" 
                           onClick={() => handleDelete(reg.id)}
-                          className="h-8 w-8 p-0 rounded-lg text-red-600 hover:bg-red-50"
+                          className="h-10 w-10 p-0 rounded-xl text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors"
                           title="Delete Registration"
+                          aria-label="Delete Registration"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </Button>
                       </div>
                     </td>

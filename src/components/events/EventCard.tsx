@@ -11,10 +11,11 @@ interface EventCardProps {
 export function EventCard({ event }: EventCardProps) {
   
   const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'Upcoming': return 'primary';
-      case 'Ongoing': return 'success';
-      case 'Completed': return 'secondary';
+    switch (status?.toLowerCase()) {
+      case 'upcoming': return 'primary';
+      case 'ongoing': return 'success';
+      case 'completed': return 'secondary';
+      case 'cancelled': return 'danger';
       default: return 'primary';
     }
   };
@@ -24,11 +25,17 @@ export function EventCard({ event }: EventCardProps) {
       <div className="bg-white rounded-2xl hover-lift border border-gray-100 overflow-hidden flex flex-col h-full shadow-sm">
         {/* Image container */}
         <div className="relative h-56 w-full overflow-hidden bg-gray-100">
-          <img 
-            src={event.image} 
-            alt={event.name} 
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-          />
+          {event.image ? (
+            <img 
+              src={event.image} 
+              alt={event.title} 
+              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+              <Calendar className="w-12 h-12" />
+            </div>
+          )}
           {/* Subtle gradient overlay for better text readability if badges overlap */}
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
@@ -39,7 +46,7 @@ export function EventCard({ event }: EventCardProps) {
           </div>
           <div className="absolute top-4 right-4">
             <Badge variant={getStatusBadgeVariant(event.status)} className="shadow-md font-semibold text-xs">
-              {event.status}
+              {event.status ? event.status.charAt(0).toUpperCase() + event.status.slice(1) : ''}
             </Badge>
           </div>
         </div>
@@ -47,11 +54,11 @@ export function EventCard({ event }: EventCardProps) {
         {/* Content */}
         <div className="p-6 flex flex-col flex-grow relative">
           <h3 className="text-xl font-bold text-navy-900 mb-2 line-clamp-1 group-hover:text-primary-600 transition-colors duration-300">
-            {event.name}
+            {event.title}
           </h3>
           
           <p className="text-gray-600 text-sm mb-6 line-clamp-2 leading-relaxed">
-            {event.shortDescription}
+            {event.description}
           </p>
 
           <div className="space-y-2.5 mt-auto mb-6 text-sm text-gray-500 font-medium">

@@ -21,12 +21,15 @@ export class RegistrationService {
     return this.registrationRepo.findByEventId(eventId);
   }
 
+  async getRegistrationsByStudentId(studentId: string): Promise<Registration[]> {
+    return this.registrationRepo.findByStudentId(studentId);
+  }
+
   async createRegistration(data: Omit<Registration, 'id' | 'registrationDate' | 'status' | 'attendance'>): Promise<Registration> {
-    const newReg: Registration = {
+    const newReg = {
       ...data,
-      id: `r${Date.now()}`,
       registrationDate: new Date().toISOString().split('T')[0],
-      status: 'pending',
+      status: 'pending' as const,
       attendance: false,
     };
     return this.registrationRepo.create(newReg);

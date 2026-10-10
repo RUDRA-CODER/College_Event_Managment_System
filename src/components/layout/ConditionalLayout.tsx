@@ -10,15 +10,15 @@ export default function ConditionalLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isCoordinatorRoute = pathname?.startsWith('/coordinator');
+  const isExcludedRoute = pathname?.startsWith('/coordinator') || pathname?.startsWith('/admin');
 
   return (
     <>
-      {!isCoordinatorRoute && <Navbar />}
-      <main className={isCoordinatorRoute ? "" : "flex-grow"}>
+      {!isExcludedRoute && <Navbar />}
+      <main className={isExcludedRoute ? "" : "flex-grow"}>
         {children}
       </main>
-      {!isCoordinatorRoute && <Footer />}
+      {!isExcludedRoute && <Footer />}
     </>
   );
 }

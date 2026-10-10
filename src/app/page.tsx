@@ -2,11 +2,19 @@ import Link from 'next/link';
 import { EventCard } from '@/components/events/EventCard';
 import { CategoryCard } from '@/components/events/CategoryCard';
 import { Button } from '@/components/ui/Button';
-import { mockEvents } from '@/data/events';
+import { fetchEvents } from '@/services/api';
 import { ArrowRight, Calendar, Users, Trophy, Sparkles, ChevronRight } from 'lucide-react';
 
-export default function Home() {
-  const upcomingEvents = mockEvents.filter(e => e.status === 'Upcoming').slice(0, 3);
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  let upcomingEvents = [];
+  try {
+    const allEvents = await fetchEvents();
+    upcomingEvents = allEvents.filter((e: any) => e.status === 'upcoming').map((e: any) => ({ ...e, id: e._id || e.id })).slice(0, 3);
+  } catch (err) {
+    console.error('Failed to fetch events for home page', err);
+  }
 
   const categories = [
     { name: 'Inspire', description: 'Annual cultural and technical festival.', count: 5, iconName: 'inspire' },
@@ -140,7 +148,7 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            {upcomingEvents.map(event => (
+            {upcomingEvents.map((event: any) => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>

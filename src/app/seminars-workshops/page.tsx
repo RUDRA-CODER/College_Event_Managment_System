@@ -1,15 +1,51 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { EventCard } from '@/components/events/EventCard';
-import { mockEvents } from '@/data/events';
+import { fetchEvents } from '@/services/api';
 import { BookOpen, Presentation, ChevronRight } from 'lucide-react';
 
 export default function SeminarsWorkshopsPage() {
-  const sessions = mockEvents.filter(e => e.category === 'Seminar' || e.category === 'Workshop');
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchEvents();
+        const filtered = data.filter((e: any) => e.category === 'Seminar' || e.category === 'Workshop');
+        setSessions(filtered);
+        setError(null);
+      } catch (err: any) {
+        console.error('Failed to load seminars & workshops:', err);
+        setError(err.message || 'Failed to load events.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadEvents();
+  }, []);
   
-  const upcomingSessions = sessions.filter(e => e.status === 'Upcoming');
-  const pastSessions = sessions.filter(e => e.status === 'Completed');
+  const upcomingSessions = sessions.filter(e => e.status === 'upcoming');
+  const pastSessions = sessions.filter(e => e.status === 'completed');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex justify-center items-center">
+        <p className="text-gray-500 text-lg">Loading seminars & workshops...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex justify-center items-center">
+        <p className="text-red-500 text-lg">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen">

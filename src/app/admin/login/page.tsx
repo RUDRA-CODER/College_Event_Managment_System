@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { API_BASE } from '@/services/api';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/admin/login', {
+      const res = await fetch(`${API_BASE}/auth/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -65,7 +66,7 @@ export default function AdminLogin() {
             Admin Portal
           </h2>
           <p className="mt-2 text-sm text-gray-500">
-            Sign in to manage the entire event system
+            Sign in to manage events, coordinators and registrations.
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
@@ -91,7 +92,8 @@ export default function AdminLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all sm:text-sm bg-white/50"
-                  placeholder="admin@ckpcet.ac.in"
+                  placeholder="Enter admin email"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -110,7 +112,8 @@ export default function AdminLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all sm:text-sm bg-white/50"
-                  placeholder="••••••••"
+                  placeholder="Enter admin password"
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -132,9 +135,7 @@ export default function AdminLogin() {
             </Button>
           </div>
           
-          <div className="text-center mt-4">
-             <p className="text-xs text-gray-500">Hint: use <span className="font-semibold text-gray-700">admin@ckpcet.ac.in</span> and any password.</p>
-          </div>
+
         </form>
       </div>
     </div>

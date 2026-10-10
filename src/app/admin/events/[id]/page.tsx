@@ -6,17 +6,22 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 export default function AdminEventDetails() {
   const { id } = useParams();
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
+  const { confirm } = useConfirm();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/events/${id}`);
+        const res = await fetch(`${API_BASE}/events/${id}`);
         const data = await res.json();
         if (data.success) {
           setEvent(data.data);
@@ -33,21 +38,29 @@ export default function AdminEventDetails() {
   }, [id, router]);
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+    const isConfirmed = await confirm({
+      title: 'Delete Event',
+      message: 'Are you sure you want to delete this event? This action cannot be undone.',
+      confirmText: 'Delete',
+      isDestructive: true
+    });
+    
+    if (isConfirmed) {
       try {
         const token = localStorage.getItem('admin_token');
-        const res = await fetch(`http://localhost:5000/api/events/${id}`, { 
+        const res = await fetch(`${API_BASE}/events/${id}`, { 
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.success) {
+          showSuccess('Event deleted successfully');
           router.push('/admin/events');
         } else {
-          alert('Failed to delete event');
+          showError(data.message || 'Failed to delete event');
         }
-      } catch (err) {
-        alert('An error occurred');
+      } catch (err: any) {
+        showError(err.message || 'An error occurred');
       }
     }
   };
@@ -79,14 +92,14 @@ export default function AdminEventDetails() {
           </Link>
           <h1 className="text-2xl font-bold text-navy-900">Event Details</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href={`/admin/events/${id}/edit`}>
-            <Button variant="outline" className="gap-2 rounded-xl border-gray-200">
-              <Edit className="h-4 w-4" /> Edit Event
+            <Button variant="outline" className="gap-2 rounded-xl border-gray-200 h-11 px-5">
+              <Edit className="h-5 w-5" /> Edit Event
             </Button>
           </Link>
-          <Button variant="outline" onClick={handleDelete} className="gap-2 rounded-xl border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-100">
-            <Trash2 className="h-4 w-4" /> Delete
+          <Button variant="outline" onClick={handleDelete} className="gap-2 rounded-xl border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-100 h-11 px-5">
+            <Trash2 className="h-5 w-5" /> Delete
           </Button>
         </div>
       </div>

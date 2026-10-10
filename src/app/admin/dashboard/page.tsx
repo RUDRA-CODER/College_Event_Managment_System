@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Calendar, Users, TrendingUp, Activity, ArrowRight, Eye, Edit, Trash2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { API_BASE } from '@/services/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
@@ -19,7 +20,7 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json'
         };
 
-        const res = await fetch('http://localhost:5000/api/admin/dashboard', { headers });
+        const res = await fetch(`${API_BASE}/admin/dashboard`, { headers });
         const data = await res.json();
 
         if (data.success) {
@@ -129,8 +130,14 @@ export default function AdminDashboard() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link href={`/admin/events/${event.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50">
-                            <Edit className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 w-10 p-0 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors"
+                            title="Edit Event"
+                            aria-label="Edit Event"
+                          >
+                            <Edit className="h-5 w-5" />
                           </Button>
                         </Link>
                       </div>

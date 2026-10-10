@@ -12,8 +12,9 @@ router.get('/:id', eventController.getEventById.bind(eventController));
 // Protected routes (Admin / Coordinator)
 router.use(authMiddleware);
 
-// Coordinators can update their assigned events
+// Coordinators can update their assigned events and notify registered students
 router.put('/:id', requireCoordinatorEventAccess, eventController.updateEvent.bind(eventController));
+router.post('/:id/notify', requireCoordinatorEventAccess, eventController.notifyRegisteredStudents.bind(eventController));
 
 // Only admins can create/delete
 router.post('/', requireAdminAccess, eventController.createEvent.bind(eventController));

@@ -5,8 +5,13 @@ import Link from 'next/link';
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { API_BASE } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 export default function AdminEvents() {
+  const { showSuccess, showError } = useToast();
+  const { confirm } = useConfirm();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,7 +19,7 @@ export default function AdminEvents() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/events');
+      const res = await fetch(`${API_BASE}/events`);
       const data = await res.json();
       if (data.success) setEvents(data.data);
     } catch (err) {
@@ -29,11 +34,17 @@ export default function AdminEvents() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Event',
+      message: 'Are you sure you want to delete this event? This action cannot be undone.',
+      confirmText: 'Delete',
+      isDestructive: true
+    });
+    if (!confirmed) return;
     
     try {
       const token = localStorage.getItem('admin_token');
-      const res = await fetch(`http://localhost:5000/api/events/${id}`, {
+      const res = await fetch(`${API_BASE}/events/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -42,11 +53,12 @@ export default function AdminEvents() {
       const data = await res.json();
       if (data.success) {
         setEvents(events.filter(e => e.id !== id));
+        showSuccess('Event deleted successfully');
       } else {
-        alert(data.message || 'Failed to delete event');
+        showError(data.message || 'Failed to delete event');
       }
-    } catch (err) {
-      alert('Error connecting to server');
+    } catch (err: any) {
+      showError(err.message || 'Error connecting to server');
     }
   };
 
@@ -153,25 +165,38 @@ export default function AdminEvents() {
                       {getStatusBadge(event.status)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         <Link href={`/admin/events/${event.id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="View Details">
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 w-10 p-0 rounded-xl text-gray-500 hover:text-primary-600 hover:bg-primary-50 flex items-center justify-center transition-colors" 
+                            title="View Details"
+                            aria-label="View Details"
+                          >
+                            <Eye className="h-5 w-5" />
                           </Button>
                         </Link>
                         <Link href={`/admin/events/${event.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Edit Event">
-                            <Edit className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 w-10 p-0 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors" 
+                            title="Edit Event"
+                            aria-label="Edit Event"
+                          >
+                            <Edit className="h-5 w-5" />
                           </Button>
                         </Link>
                         <Button 
                           variant="ghost" 
                           size="sm" 
                           onClick={() => handleDelete(event.id)}
-                          className="h-8 w-8 p-0 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50" 
+                          className="h-10 w-10 p-0 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors" 
                           title="Delete Event"
+                          aria-label="Delete Event"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </Button>
                       </div>
                     </td>
